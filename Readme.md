@@ -1,0 +1,1 @@
+In order to install the langchain-chroma package you might need to download vs_buildtools.
