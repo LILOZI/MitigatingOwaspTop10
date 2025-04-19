@@ -13,6 +13,9 @@ from my_swarm.security_agent.security_tools import (
     security_sanitizer,   
 )
 
+from my_swarm.security_agent.access_control import (
+    add_user,
+)
 
 security_graph = StateGraph(SecurityState)
 

@@ -1,4 +1,4 @@
-from langgraph.graph import MessagesState
+from my_swarm.commander_agent.commander_state import CommandsState
 
 from langgraph.types import Command, Send
 
@@ -8,7 +8,7 @@ from typing import Literal
 
 from langchain_ollama import ChatOllama
 
-from langgraph_swarm import create_handoff_tool, create_swarm
+from langgraph_swarm import create_handoff_tool
 
 transfer_security = create_handoff_tool(agent_name="Security Agent",
                     description="Transfer the user to the Security Agent",)
@@ -20,7 +20,7 @@ llm_commander = ChatOllama(model="llama3.2:3b").bind_tools(
     [transfer_security, transfer_business])
 
 
-def commander_node(state: MessagesState):
+def commander_node(state: CommandsState) -> Command:
     """
     This function is an agent that decides what to do based on the state of the conversation.
     It can either respond to the user, ask for more information, or exit the conversation.
@@ -29,7 +29,7 @@ def commander_node(state: MessagesState):
     pass
 
 
-def commander_respond(state: MessagesState):
+def commander_respond(state: CommandsState) -> Command:
     """
     This function is an agent that decides what to do based on the state of the conversation.
     It can either respond to the user, ask for more information, or exit the conversation.

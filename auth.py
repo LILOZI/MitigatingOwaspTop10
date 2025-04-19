@@ -14,6 +14,7 @@ user_store = Chroma(
     persist_directory="./chroma_users"  # optional: enables persistence
 )
 
+# TBA
 # === Secret for JWT ===
 SECRET_KEY = "your_super_secret_key"
 

@@ -9,8 +9,47 @@ from langchain_core.messages import SystemMessage
 
 from langgraph.types import Command, Send
 
+import logging
+
 import jwt
 
+import bcrypt
+
+import os
+
+from dotenv import load_dotenv, dotenv_values 
+
+load_dotenv() 
+
+# accessing and printing value
+print(os.getenv("SECRET_HASHING_KEY"))
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+EMBEDDING_MODEL = OllamaEmbeddings(model="granite-embedding:30m")
+
+USER_COLLECTION = "users"
+PERSIST_USERS_DIR = "./chroma_users"
+
+REPORT_COLLECTION = "security_reports"
+PERSIST_REPORTS_DIR = "./chroma_security_reports"
+# === Initialize Chroma Databases ===
+user_store = Chroma(
+    collection_name=USER_COLLECTION,
+    embedding_function=EMBEDDING_MODEL,
+    persist_directory=PERSIST_USERS_DIR
+)
+
+report_store = Chroma(
+    collection_name=REPORT_COLLECTION,
+    embedding_function=EMBEDDING_MODEL,
+    persist_directory=PERSIST_REPORTS_DIR
+)
 
 
 embedding_model = OllamaEmbeddings(model="granite-embedding:30m")
@@ -18,20 +57,12 @@ embedding_model = OllamaEmbeddings(model="granite-embedding:30m")
 security_vector_store = Chroma(
     collection_name="example_collection",
     embedding_function=embedding_model,
-    persist_directory="./security_policies_db",  # Where to save data locally, remove if not necessary
+    persist_directory="./security_policies_db",
 )
-
 
 security_retriever = security_vector_store.as_retriever(
     search_type="mmr", search_kwargs={"k": 4, "fetch_k": 5}
 )
-
-user_store = Chroma(
-    collection_name="users",
-    embedding_function=embedding_model,
-    persist_directory="./chroma_users"  
-)
-
 
 @tool
 def security_sanitizer():
@@ -59,8 +90,6 @@ def security_retriever(query: str) -> str:
     security_retriever.invoke(
         query=query,
 )
-    
-
 
 # === Authenticate user ===
 @tool
