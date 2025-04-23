@@ -15,41 +15,7 @@ import jwt
 
 import bcrypt
 
-import os
 
-from dotenv import load_dotenv, dotenv_values 
-
-load_dotenv() 
-
-# accessing and printing value
-print(os.getenv("SECRET_HASHING_KEY"))
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
-
-EMBEDDING_MODEL = OllamaEmbeddings(model="granite-embedding:30m")
-
-USER_COLLECTION = "users"
-PERSIST_USERS_DIR = "./chroma_users"
-
-REPORT_COLLECTION = "security_reports"
-PERSIST_REPORTS_DIR = "./chroma_security_reports"
-# === Initialize Chroma Databases ===
-user_store = Chroma(
-    collection_name=USER_COLLECTION,
-    embedding_function=EMBEDDING_MODEL,
-    persist_directory=PERSIST_USERS_DIR
-)
-
-report_store = Chroma(
-    collection_name=REPORT_COLLECTION,
-    embedding_function=EMBEDDING_MODEL,
-    persist_directory=PERSIST_REPORTS_DIR
-)
 
 
 embedding_model = OllamaEmbeddings(model="granite-embedding:30m")
@@ -90,13 +56,8 @@ def security_retriever(query: str) -> str:
     security_retriever.invoke(
         query=query,
 )
+    
 
-# === Authenticate user ===
-@tool
-def authenticate_user(username, password):
-    results = user_store.similarity_search(query=username, k=2)
-    for doc in results:
-        if doc.metadata.get("username") == username:
-            stored_hash = doc.page_content.encode()
-            return bcrypt.checkpw(password.encode(), stored_hash)
-    return False
+
+
+

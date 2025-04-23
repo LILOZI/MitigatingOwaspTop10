@@ -8,18 +8,10 @@ from typing import Literal
 
 from langchain_ollama import ChatOllama
 
-from langgraph_swarm import create_handoff_tool, create_swarm
 
 
-transfer_security = create_handoff_tool(agent_name="Security Agent",
-                    description="Transfer the user to the Security Agent",)
-
-transfer_commander = create_handoff_tool(agent_name="Commander Agent",
-                    description="Transfer the user to the Commander Agent",)
-
-
-llm_business = ChatOllama(model="llama3.2:3b").bind_tools(
-    [transfer_security, transfer_commander])
+llm_business = ChatOllama(model="llama3.2:3b")#.bind_tools(
+    #[transfer_security, transfer_commander])
 
 
 def business_node(state: MessagesState):
@@ -27,8 +19,12 @@ def business_node(state: MessagesState):
     This function is an agent that handles business-related tasks.
     It can either respond to the user, ask for more information, or exit the conversation.
     """
-    print("Business Agent")
-    pass
+    sys_msg = SystemMessage(
+        content="You are a business agent that handles business-related tasks. "
+                "Given the user input, decide which business tool to use."
+    )
+    response = llm_business.invoke([sys_msg, state["messages"][0]])
+    return {"messages": [response]}
 
 
 def bussiness_respond(state: MessagesState):
