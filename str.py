@@ -2,6 +2,7 @@ import streamlit as st
 from uuid import uuid4
 
 import json
+import re
 
 from langchain_chroma import Chroma
 
@@ -45,6 +46,8 @@ supervisor = init_supervisor()
 st.session_state.setdefault("logged_in", False)
 st.session_state.setdefault("messages", [])
 st.session_state.setdefault("thread_id", str(uuid4()))
+st.session_state.setdefault("current_user", None)
+st.session_state.setdefault("token", None)
 
 st.title("🧠 Chatbot with Agent-Based Auth")
 
@@ -75,16 +78,20 @@ if not st.session_state["logged_in"]:
                 }
             ]
             })
-        print(result["messages"][-1])
         result = json.loads(result["messages"][-1].content)
         if not result["security_issue"]:
             st.session_state["logged_in"] = True if action == "Log in" else False
             st.session_state["current_user"] = username
+            token= re.search(r'Token: ([^ ]+) ', result["response"])
+            st.session_state["token"] = token.group(1) if token else ""
             st.session_state["messages"] = []  # reset conversation
             st.session_state["thread_id"] = str(uuid4())
             st.success(f"✅ {result["response"]}")
         else:
             st.error(f"❌ {result["response"]}")
+        
+        if st.session_state["logged_in"]:
+            st.rerun()
         
 
 else:

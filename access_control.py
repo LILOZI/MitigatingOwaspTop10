@@ -342,18 +342,23 @@ def verify_token_fn(state: AgentState) -> AgentState:
         state["result"] = f"❌ Error verifying token: {e}"
     return state
 
+
+def router(state: AgentState):
+    logger.info(f"Routing action: {state['action']}")
+    return state["action"]
+
+
 # === StateGraph Setup ===
 graph = StateGraph(AgentState)
 
 graph.add_node("add_user", add_user_fn)
 graph.add_node("authenticate", authenticate_fn)
 graph.add_node("verify_token", verify_token_fn)
+graph.add_node("router", router)
 
-def router(state: AgentState):
-    logger.info(f"Routing action: {state['action']}")
-    return state["action"]
 
-graph.set_entry_point(router)
+
+graph.set_entry_point("router")
 graph.add_edge("add_user", END)
 graph.add_edge("authenticate", END)
 graph.add_edge("verify_token", END)

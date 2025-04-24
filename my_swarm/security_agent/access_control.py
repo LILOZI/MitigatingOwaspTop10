@@ -17,6 +17,7 @@ from langgraph.types import Command, Send
 
 from my_swarm.security_agent.security_state import SecurityState
 import os
+import re
 
 import json
 
@@ -199,7 +200,7 @@ def execute_access_control(state: SecurityState) -> Command:
     if state["username"] == "":
         print("No username found in state.")
         return Command(
-            goto="Security Agent",
+            goto=Send("Security Agent", arg={"messages": state["messages"]}),
         )
     print("hey")
     if isinstance(state["messages"][-1], AIMessage):
@@ -210,21 +211,21 @@ def execute_access_control(state: SecurityState) -> Command:
 
         try:
             response = access_control_tools[tool_name].invoke(tool_call)
-            response_dict = {
-                "content": response.content,
-                "name": tool_name,
-                "tool_call_id": toll_id
-            }
+            # response_dict = {
+            #     "content": response.content,
+            #     "name": tool_name,
+            #     "tool_call_id": toll_id
+            # }
             
             state_update = {
                 "messages": [state["messages"][0],
-                    AIMessage(
-                    content=f"**Security Agent** response: {json.dumps(response_dict)}",
-                    tool_calls=[ToolCall(
-                        name=tool_name,
-                        args={"transfer_to": "Supervisor"},
-                        id="1",
-                    )],
+                    HumanMessage(
+                    content=f"**Security Agent** response: {response.content}",
+                    # tool_calls=[ToolCall(
+                    #     name=tool_name,
+                    #     args={"transfer_to": "Supervisor"},
+                    #     id="1",
+                    # )],
                 ),
                 ToolMessage(
                     content=f"**Security Agent** Handoff → **Supervisor**",
@@ -234,12 +235,18 @@ def execute_access_control(state: SecurityState) -> Command:
             }
             if tool_name == "verify_token":
                 state_update["auth_token"] = tool_args["token"]
-                # state_update["role"] = tool_args["role"]
                 state_update["username"] = tool_args["username"]
                 state_update["is_authenticated"] = True
+                
+            if tool_name == "authenticate_user":
+                token = re.search(r'Token: ([^ ]+) ', response.content)
+                state_update["username"] = tool_args["username"]
+                state_update["auth_token"] = token.group(1) if token else ""
+                state_update["is_authenticated"] = True if token else False
+                
             print("State update:", state_update)
             return Command(
-                goto="Supervisor",
+                goto=Send("Supervisor", arg={"messages": state_update["messages"]}),
                 update=state_update,
                 graph=Command.PARENT
             )

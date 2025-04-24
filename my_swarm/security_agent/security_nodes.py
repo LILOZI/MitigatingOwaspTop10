@@ -50,7 +50,7 @@ def security_tool_choice(state:SecurityState) -> Command[Literal["Security Agent
                 "Access Control", "Sanitizer", "Retriever", "Respond"]]:
     if type(state["messages"][-1]) is AIMessage:
         print(f"Last message: {state['messages'][-1]}")
-        if state["messages"][-1].tool_calls is not None:
+        if state["messages"][-1].tool_calls != []:
             tool_choice = state["messages"][-1].tool_calls[0]["name"]
             if tool_choice in access_control_tools.keys():
                 return Command(

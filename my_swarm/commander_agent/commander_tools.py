@@ -34,7 +34,8 @@ def create_custom_handoff_tool(
     message_filter: Callable[[BaseMessage], bool] | None = None,
     custom_filter: Callable[[Dict], Dict] | None = None,
     # ───────────────────────── TARGET‑NODE SUPPORT ───────────────────────────
-    target_key: str = "__target_node__",          # where we store the entry hint
+    target_key: str = "",          # where we store the entry hint
+    graph_name: str = ""
 ) -> Callable:
     """
     Returns a LangChain tool that delegates control to ``agent_name``.
@@ -73,7 +74,7 @@ def create_custom_handoff_tool(
         target_node: Annotated[
             str,
             "If provided, jump the delegate graph straight to this node."
-        ] = "",
+        ] = target_key,
         state: Annotated[Dict, InjectedState] = None,
         tool_call_id: Annotated[str, InjectedToolCallId] = "",
     ):
@@ -115,10 +116,12 @@ def create_custom_handoff_tool(
             filtered[target_key] = target_node
 
         # 4) Return the LangGraph Command
+        graph = graph_name if graph_name != "" else Command.PARENT
+        print(graph)
         return Command(
             goto=agent_name,        # stay compatible with vanilla supervisor
             update=filtered,
-            graph=Command.PARENT    # merge into parent‑graph state
+            graph=graph    # merge into parent‑graph state
         )
 
     return _handoff
@@ -141,22 +144,28 @@ def credential_filters(state: Dict) -> Dict:
         filtered_state["auth_token"] = state["auth_token"]
     return filtered_state
 
-tools = [
-    create_custom_handoff_tool(
+authentication_tool = create_custom_handoff_tool(
         agent_name="Security Agent",
         name="delegate_to_security_agent_for_authentication",
         description="Delegate sign ins, log ins and authentication related tasks to the Security Agent.",
         # message_filter=human_message_filter,
         custom_filter=credential_filters,
         target_key="Access control",
-        n_history=2,
-    ),
-    create_custom_handoff_tool(
+        n_history=1,
+        graph_name="Security Agent",
+    )
+
+ask_business_tool = create_custom_handoff_tool(
         agent_name="Business Agent",
         name="delegate_to_business_agent",
         description="Delegate task to the Business Agent to answer business-related questions.",
         n_history=4,
-    ),
+        graph_name="Business Agent",
+    )
+
+tools = [
+    authentication_tool,
+    ask_business_tool,
 ]
 
 llm_commander = ChatOllama(model="llama3.2:3b",

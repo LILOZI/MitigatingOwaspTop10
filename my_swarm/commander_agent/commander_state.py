@@ -9,6 +9,7 @@ def set_str(str1, str2):
 def set_bool(bool1, bool2):
     return bool2
 
+
 class CommanderState(AgentState):
     """State for the Commander agent."""
     username: Annotated[str, set_str] = Field(default=None, description="Username of the logged-in user")
