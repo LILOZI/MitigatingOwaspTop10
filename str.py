@@ -77,12 +77,17 @@ if not st.session_state["logged_in"]:
                     "content": f"{action.lower()} username={username} password={password}"
                 }
             ]
-            })
+            },
+            config={
+                "configurable": {
+                    "thread_id": st.session_state["thread_id"],
+                }
+            },)
         result = json.loads(result["messages"][-1].content)
         if not result["security_issue"]:
             st.session_state["logged_in"] = True if action == "Log in" else False
             st.session_state["current_user"] = username
-            token= re.search(r'Token: ([^ ]+) ', result["response"])
+            token= re.search(r'Token: ([^ ]+)', result["response"])
             st.session_state["token"] = token.group(1) if token else ""
             st.session_state["messages"] = []  # reset conversation
             st.session_state["thread_id"] = str(uuid4())
@@ -95,34 +100,6 @@ if not st.session_state["logged_in"]:
         
 
 else:
-    # username = st.session_state["current_user"]
-    # st.subheader(f"💬 Chatting as: {username}")
-    # for msg in st.session_state["messages"]:
-    #     st.write(f"**{msg['role'].capitalize()}:** {msg['content']}")
-
-    # with st.form(key="chat_form", clear_on_submit=True):
-    #     user_input = st.text_input("Message:")
-    #     send = st.form_submit_button("Send")
-
-    # if send and user_input:
-    #     st.session_state["messages"].append({"role": "user", "content": user_input})
-
-    #     try:
-    #         # Compile the app with user's Chroma checkpointer
-    #         result = supervisor.invoke(
-    #             {"messages": st.session_state["messages"]},
-    #         )
-
-    #         st.session_state["messages"].append(
-    #             {
-    #                 "role": "assistant",
-    #                 "content": result["messages"][-1].content,
-    #             }
-    #         )
-    #         st.rerun()
-
-    #     except Exception as e:
-    #         st.error(f"⚠️ supervisor Error: {e}")
     username = st.session_state["current_user"]
     st.subheader(f"💬 Chatting as: {username}")
 
@@ -143,15 +120,32 @@ else:
         try:
             # Compile the app with user's Chroma checkpointer
             result = supervisor.invoke(
-                {"messages": st.session_state["messages"]},
+                {"messages": st.session_state["messages"],
+                 "username": st.session_state["current_user"],
+                 "token": st.session_state["token"],},
+                 config={
+                     "configurable": {
+                         "thread_id": st.session_state["token"],
+                     }
+                 },
             )
 
-            st.session_state["messages"].append(
-                {
-                    "role": "assistant",
-                    "content": result["messages"][-1].content,
-                }
-            )
+            match = re.search(r'\{(?:[^{}]|(?0))*\}', result.content)
+            if match:
+                result = json.loads(match.group(0))
+                st.session_state["messages"].append(
+                    {
+                        "role": "assistant",
+                        "content": result["messages"][-1].content,
+                    }
+                )
+            else:
+                st.session_state["messages"].append(
+                    {
+                        "role": "assistant",
+                        "content": "Something went wrong, please try again.",
+                    }
+                )
             st.rerun()
 
         except Exception as e:

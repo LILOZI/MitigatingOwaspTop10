@@ -246,7 +246,7 @@ def execute_access_control(state: SecurityState) -> Command:
                 
             print("State update:", state_update)
             return Command(
-                goto=Send("Supervisor", arg={"messages": state_update["messages"]}),
+                goto=Send("Supervisor", arg=state_update),
                 update=state_update,
                 graph=Command.PARENT
             )

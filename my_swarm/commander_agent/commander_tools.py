@@ -117,7 +117,7 @@ def create_custom_handoff_tool(
 
         # 4) Return the LangGraph Command
         graph = graph_name if graph_name != "" else Command.PARENT
-        print(graph)
+        print(f"handoff tool {graph}")
         return Command(
             goto=agent_name,        # stay compatible with vanilla supervisor
             update=filtered,
@@ -126,9 +126,14 @@ def create_custom_handoff_tool(
 
     return _handoff
 
-def human_message_filter(message: BaseModel) -> bool:
-    """Filter to keep only human messages."""
-    return isinstance(message, HumanMessage)
+def human_message_filter(Dict) -> Dict:
+    new_dict = {}
+    for k, v in Dict.items():
+        if k == "messages":
+            new_dict[k] = [msg for msg in v if isinstance(msg, HumanMessage)]
+        else:
+            new_dict[k] = v
+    return new_dict
 
 def credential_filters(state: Dict) -> Dict:
     """Filter to keep only credential-related keys."""
@@ -136,7 +141,7 @@ def credential_filters(state: Dict) -> Dict:
     filtered_state = {}
     filtered_state["messages"] = []
     for message in state["messages"]:
-        if isinstance(message, HumanMessage):
+        if type(message) == HumanMessage:
             filtered_state["messages"].append(message)
     if state["username"] != "":
         filtered_state["username"] = state["username"]
@@ -160,7 +165,10 @@ ask_business_tool = create_custom_handoff_tool(
         name="delegate_to_business_agent",
         description="Delegate task to the Business Agent to answer business-related questions.",
         n_history=4,
+        # message_filter=human_message_filter,
+        custom_filter=human_message_filter,
         graph_name="Business Agent",
+        target_key="Business Agent",
     )
 
 tools = [

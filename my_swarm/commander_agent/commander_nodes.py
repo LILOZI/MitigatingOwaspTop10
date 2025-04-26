@@ -14,11 +14,20 @@ def commander_node(state: CommanderState):
     This function is an agent that decides what to do based on the state of the conversation.
     It can either respond to the user, ask for more information, or exit the conversation.
     """
-    print(f"Commander Node: {state['messages']}")
+    print(f"Commander Node: {state}")
     sys_msg = SystemMessage(content=SUPERVISOR_PROMPT)
-    commander_response = llm_commander.invoke([sys_msg] + state["messages"])
+    msgs = state["messages"]
+    state_update = {}
+    state_update["messages"] = []
+    auth_token = state.get("auth_token")
+    if not state.get("is_authenticated", False) and (auth_token is not None and auth_token != ""):
+        msg = HumanMessage(content=f"Verify token={auth_token} for user={state['username']}")
+        msgs.append(msg)
+        state_update["messages"] += [msg]
+    commander_response = llm_commander.invoke([sys_msg] + msgs)
     print(f"Commander Agent Response: {commander_response}")
-    return {"messages": commander_response}
+    state_update["messages"] += [commander_response]
+    return state_update
 
 # def execute_command(state: CommanderState) -> Command:
 #     if state["messages"][-1].tool_calls is not None:
@@ -64,11 +73,12 @@ You are responsible for delegating tasks to the appropriate agent based on the t
 - If the security agent returned a response indicating something is wrong with the input, output the delegated model's response.
 - You must not reformat the response or change the content of the response, you must just pass it to the user.
 - You also must not mention the security agent's existence.
+- Do not delegate tasks to the business agent if no question was asked, business related tasks are only to answer questions and provide information.
 
 ## Security Related Tasks
 Security-related tasks include:
 - Handling sign ups and log ins.
-- Verifying user identities and tokens.
+- Verifying user's tokens.
 - Managing access control and permissions.
 
 ## Business Related Tasks

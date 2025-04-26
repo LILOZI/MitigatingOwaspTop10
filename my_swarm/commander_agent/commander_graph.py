@@ -26,7 +26,7 @@ commander_graph.add_edge(START, "Supervisor")
 
 commander_graph.add_node("tools", ToolNode(tools))
 
-commander_graph.add_edge("tools", "Supervisor")
+# commander_graph.add_edge("tools", "Supervisor")
 
 commander_graph.add_conditional_edges("Supervisor", tools_condition)
 

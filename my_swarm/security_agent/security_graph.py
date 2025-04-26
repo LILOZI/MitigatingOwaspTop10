@@ -1,7 +1,5 @@
 from langgraph.graph import StateGraph, START, END
 
-
-
 from my_swarm.security_agent.security_state import SecurityState
 
 from my_swarm.security_agent.security_nodes import (
