@@ -8,36 +8,53 @@ from langgraph.types import Command, Send
 
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 
-embeddings = OllamaEmbeddings(model="granite-embedding:30m")
+from typing import List
 
-business_vector_store = Chroma(
-    collection_name="example_collection",
+embeddings = OllamaEmbeddings(model="nomic-embed-text")
+
+intro_retriever = Chroma(
+    collection_name="lebron_intro",
     embedding_function=embeddings,
-    persist_directory="./business_policies_db",  # Where to save data locally, remove if not necessary
+    persist_directory="./lebron_intro_db"
+).as_retriever(
+    search_type="mmr", search_kwargs={"k": 3}
 )
 
-
-business_retriever = business_vector_store.as_retriever(
-    search_type="mmr", search_kwargs={"k": 4, "fetch_k": 5}
+body_retriever = Chroma(
+    collection_name="lebron_bio",
+    embedding_function=embeddings,
+    persist_directory="./lebron_bio_db"
+).as_retriever(
+    search_type="mmr", search_kwargs={"k": 3}
 )
 
 @tool
-def business_retreiver(query: str) -> str:
-    """
-    Retrieves relevant information from the business vector store based on the query.
+def lebron_intro_retreiver(query: str) -> List[str]:
+    """Retrieves relevant information about Lebron James.
+    Use this tool when you need short answers and specific information about Lebron James.
 
     Args:
         query (str): The query to search for in the vector store.
     """
-    pass
+    intro_retriever_result = intro_retriever.invoke(query)
+    if intro_retriever_result is not None:
+        return [result.page_content for result in intro_retriever_result]
+    else:
+        return ["No relevant information found."]
 
 @tool
-def business_schema_generator():
+def lebron_body_retreiver(query: str) -> List[str]:
+    """Retrieves relevant information about Lebron James.
+    Use this tool when you need larger context and broader information about Lebron James.
+
+    Args:
+        query (str): The query to search for in the vector store.
     """
-    Generates a json schema for the bussiness answer to be in.
-    """
-    
-    pass
+    body_retriever_result = body_retriever.invoke(query)
+    if body_retriever_result is not None:
+        return [result.page_content for result in body_retriever_result]
+    else:
+        return ["No relevant information found."]
 
 @tool 
 def business_respond(response: str) -> str:
@@ -50,7 +67,8 @@ def business_respond(response: str) -> str:
     """
     pass
 
-llm_business = ChatOllama(model="llama3.2:3b",
+llm_business = ChatOllama(model="llama3.2:3b-instruct-q8_0",
                           num_ctx=4096,
-                          temperature=0.2,
-                          top_k=20).bind_tools([business_respond])
+                          temperature=0.4,
+                          top_k=40).bind_tools([business_respond, lebron_intro_retreiver,
+                                                lebron_body_retreiver])

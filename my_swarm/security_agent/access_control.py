@@ -25,7 +25,6 @@ from dotenv import load_dotenv
 
 load_dotenv() 
 
-# accessing and printing value
 SECRET_HASHING_KEY = os.getenv("SECRET_HASHING_KEY")
 
 logging.basicConfig(
@@ -196,13 +195,10 @@ access_control_tools = {
 def execute_access_control(state: SecurityState) -> Command:
     """Execute access control based on the user's role and token."""
     print("Executing access control...")
-    print("State:", state)
     if state["username"] == "":
-        print("No username found in state.")
         return Command(
             goto=Send("Security Agent", arg={"messages": state["messages"]}),
         )
-    print("hey")
     if isinstance(state["messages"][-1], AIMessage):
         tool_call = state["messages"][-1].tool_calls[0]
         tool_name = tool_call["name"]
@@ -220,7 +216,7 @@ def execute_access_control(state: SecurityState) -> Command:
             state_update = {
                 "messages": [state["messages"][0],
                     HumanMessage(
-                    content=f"**Security Agent** response: {response.content}",
+                    content=f"**Security Agent** response: <START>{response.content}<END>",
                     # tool_calls=[ToolCall(
                     #     name=tool_name,
                     #     args={"transfer_to": "Supervisor"},
@@ -239,12 +235,11 @@ def execute_access_control(state: SecurityState) -> Command:
                 state_update["is_authenticated"] = True
                 
             if tool_name == "authenticate_user":
-                token = re.search(r'Token: ([^ ]+) ', response.content)
+                token = re.search(r'Token: ([^\s]+)', response.content)
                 state_update["username"] = tool_args["username"]
                 state_update["auth_token"] = token.group(1) if token else ""
                 state_update["is_authenticated"] = True if token else False
                 
-            print("State update:", state_update)
             return Command(
                 goto=Send("Supervisor", arg=state_update),
                 update=state_update,

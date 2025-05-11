@@ -8,3 +8,10 @@
 /security_policies_db
 /security_policies_db
 /chroma_security_reports
+/chroma_user_history
+/my_swarm/__pycache__
+/my_swarm/business_agent/__pycache__
+/my_swarm/commander_agent/__pycache__
+/my_swarm/security_agent/__pycache__
+/lebron_bio_db
+/lebron_intro_db

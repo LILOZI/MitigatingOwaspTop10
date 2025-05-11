@@ -6,24 +6,25 @@ from my_swarm.security_agent.security_nodes import (
     security_node,
     security_respond,
     security_tool_choice,
+    validate_output_helper,
 )
 
-from my_swarm.security_agent.security_tools import (
-    security_retriever,
-    security_sanitizer,   
-)
+# from my_swarm.security_agent.security_tools import (
+#     # security_retriever,
+#     # security_sanitizer,   
+# )
 
 from my_swarm.security_agent.access_control import (
     execute_access_control,
-    access_control_tools,
 )
 
 security_graph = StateGraph(SecurityState)
 
 security_graph.add_node("Security Agent", security_node)
-security_graph.add_node("Retriever", security_retriever)
-security_graph.add_node("Sanitizer", security_sanitizer)
+# security_graph.add_node("Retriever", security_retriever)
+# security_graph.add_node("Sanitizer", security_sanitizer)
 security_graph.add_node("Respond", security_respond)
+security_graph.add_node("Validate Output", validate_output_helper)
 
 # security_graph.add_node("Access Control", execute_access_control)
 security_graph.add_node("Access Control", execute_access_control)

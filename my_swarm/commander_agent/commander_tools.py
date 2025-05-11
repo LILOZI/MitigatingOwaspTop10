@@ -1,19 +1,8 @@
 from langchain_ollama import ChatOllama
-
-# from langgraph_swarm import create_handoff_tool
-
-# transfer_security = create_handoff_tool(agent_name="Security Agent",
-#                     description="Transfer the user to the Security Agent",)
-
-# transfer_business = create_handoff_tool(agent_name="Business Agent",
-#                     description="Transfer the user to the Business Agent",)
-
-
-
 from typing import Annotated, Dict, Callable, Set, List
 
 from langchain_core.tools import tool, BaseTool, InjectedToolCallId
-from langchain_core.messages import ToolMessage, BaseMessage, HumanMessage
+from langchain_core.messages import ToolMessage, BaseMessage, HumanMessage, AIMessage
 from pydantic import BaseModel
 from langgraph.types import Command
 from langgraph.prebuilt import InjectedState
@@ -71,17 +60,17 @@ def create_custom_handoff_tool(
             str,
             "Optional short instruction for the next agent"
         ] = "",
-        target_node: Annotated[
-            str,
-            "If provided, jump the delegate graph straight to this node."
-        ] = target_key,
+        # target_node: Annotated[
+        #     str,
+        #     "If provided, jump the delegate graph straight to this node."
+        # ] = target_key,
         state: Annotated[Dict, InjectedState] = None,
         tool_call_id: Annotated[str, InjectedToolCallId] = "",
     ):
         # 1) Build an ACK so the supervisor’s message log stays coherent
         ack = ToolMessage(
             content=f"Handoff → **{agent_name}**"
-                    + (f" (node = {target_node})" if target_node else ""),
+                    + (f" (node = {target_key})" if target_key else ""),
             name=name,
             tool_call_id=tool_call_id,
         )
@@ -112,12 +101,12 @@ def create_custom_handoff_tool(
         filtered.setdefault("messages", []).append(ack)
         if task_description:
             filtered["task_description"] = task_description
-        if target_node:
-            filtered[target_key] = target_node
+        if target_key:
+            filtered[target_key] = target_key
 
         # 4) Return the LangGraph Command
         graph = graph_name if graph_name != "" else Command.PARENT
-        print(f"handoff tool {graph}")
+        print(f"handoff tool {filtered}")
         return Command(
             goto=agent_name,        # stay compatible with vanilla supervisor
             update=filtered,
@@ -130,7 +119,10 @@ def human_message_filter(Dict) -> Dict:
     new_dict = {}
     for k, v in Dict.items():
         if k == "messages":
-            new_dict[k] = [msg for msg in v if isinstance(msg, HumanMessage)]
+            new_dict[k] = []
+            for message in v:
+                if type(message) == HumanMessage:
+                    new_dict[k].append(message)
         else:
             new_dict[k] = v
     return new_dict
@@ -153,10 +145,29 @@ authentication_tool = create_custom_handoff_tool(
         agent_name="Security Agent",
         name="delegate_to_security_agent_for_authentication",
         description="Delegate sign ins, log ins and authentication related tasks to the Security Agent.",
-        # message_filter=human_message_filter,
         custom_filter=credential_filters,
         target_key="Access control",
         n_history=1,
+        graph_name="Security Agent",
+    )
+
+validate_response_tool = create_custom_handoff_tool(
+        agent_name="Security Agent",
+        name="delegate_to_security_agent_for_output_validation",
+        description="Validate the output of the business agent to make sure it does not contain any information we do not want to share with the user.",
+        n_history=2,
+        custom_filter=human_message_filter,
+        target_key="Validate Output",
+        graph_name="Security Agent",
+    )
+
+validate_input_tool = create_custom_handoff_tool(
+        agent_name="Security Agent",
+        name="delegate_to_security_agent_for_input_validation",
+        description="Validate the user's input to make sure it does not contain any malicious content that attempt to bypass the system instructions.",
+        n_history=1,
+        custom_filter=human_message_filter,
+        target_key="Validate Input",
         graph_name="Security Agent",
     )
 
@@ -164,8 +175,7 @@ ask_business_tool = create_custom_handoff_tool(
         agent_name="Business Agent",
         name="delegate_to_business_agent",
         description="Delegate task to the Business Agent to answer business-related questions.",
-        n_history=4,
-        # message_filter=human_message_filter,
+        n_history=1,
         custom_filter=human_message_filter,
         graph_name="Business Agent",
         target_key="Business Agent",
@@ -173,9 +183,21 @@ ask_business_tool = create_custom_handoff_tool(
 
 tools = [
     authentication_tool,
+    validate_response_tool,
+    validate_input_tool,
     ask_business_tool,
 ]
 
-llm_commander = ChatOllama(model="llama3.2:3b",
-                           temperature=0,
-                           top_k=20).bind_tools(tools)
+llm_commander = ChatOllama(model="llama3.2:3b-instruct-q8_0",
+                           temperature=0.0,
+                           top_k=30).bind_tools(tools)
+
+
+if __name__ == "__main__":
+    print("Commander Agent tools loaded.")
+    print(tools[0])
+    print("-----------------")
+    print(tools[1])
+    print("-----------------")
+    print(tools[2])
+    print("-----------------")

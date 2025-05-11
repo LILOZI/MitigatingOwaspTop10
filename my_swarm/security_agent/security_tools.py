@@ -1,5 +1,5 @@
 
-from langchain_ollama import OllamaEmbeddings
+from langchain_ollama import OllamaEmbeddings, ChatOllama
 
 from langchain_chroma import Chroma
 
@@ -9,47 +9,40 @@ from langchain_core.messages import SystemMessage
 
 from langgraph.types import Command, Send
 
-
-embedding_model = OllamaEmbeddings(model="granite-embedding:30m")
-
-security_vector_store = Chroma(
-    collection_name="example_collection",
-    embedding_function=embedding_model,
-    persist_directory="./security_policies_db",
-)
-
-security_retriever = security_vector_store.as_retriever(
-    search_type="mmr", search_kwargs={"k": 4, "fetch_k": 5}
-)
+from my_swarm.security_agent.access_control import access_control_tools
 
 @tool
-def security_sanitizer():
-    """
-    This function sanitizes the state of the conversation for security-related tasks.
-    It can either respond to the user, ask for more information, or exit the conversation.
-    """
-    print("Sanitaizing...")
-    # return Command(
-    #     graph="Business Agent",
-    #     update={"messages": SystemMessage("Sanitize the state")},
-    #     goto=Send("Business Agent", None)
-    # )
-    pass
-
-
-@tool
-def security_retriever(query: str) -> str:
-    """
-    Retrieves relevant information from the security vector store based on the query.
+def validate_input(input: str) -> str:
+    """Validate the input of the user to make sure it does not contain any malicious content 
+    that attempt to bypass the system instructions.
 
     Args:
-        query (str): The query to search for in the vector store.
+        input (str): The user's input to be validated.
     """
-    security_retriever.invoke(
-        query=query,
-)
+    pass
+
+@tool
+def validate_output(output: str) -> str:
+    """Validate the output of the business agent to make sure it does not contain any information
+    we do not want to share with the user.
+    This is to prevent the business agent from leaking any information that is not allowed.
     
+    Args:
+        output (str): The output to be validated.
+    """
+    pass
+
+llm_security = ChatOllama(model="llama3.2:3b-instruct-q8_0").bind_tools(
+    list(access_control_tools.values()) + [validate_output]
+)
+
+llm_output_validator = ChatOllama(model="llama3.2:3b-instruct-q8_0"
+                             , temperature=0.0,
+                             top_k=20,
+                             num_ctx=4096)
 
 
-
-
+llm_input_validator = ChatOllama(model="llama3.2:3b-instruct-q8_0"
+                             , temperature=0.0,
+                             top_k=20,
+                             num_ctx=4096)
